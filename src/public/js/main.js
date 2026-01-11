@@ -1,307 +1,246 @@
-// Hash Router with Dynamic Base Path Detection
-class HashRouter {
+// app.js - Router yang load file dari server
+class ExternalFileRouter {
     constructor() {
         this.routes = {};
         this.currentUrl = '';
-        this.rootElement = document.getElementById('app');
-        this.loadingElement = document.getElementById('loading');
-        this.basePath = this.detectBasePath();
-        console.log('Base path detected:', this.basePath);
+        this.app = document.getElementById('app');
+        this.footer = document.getElementsByClassName('footer');
+        this.copyright = document.getElementsByClassName('copyright');
+        this.textFooter = document.querySelectorAll('.text-footer');
+        this.loading = document.getElementById('loading');
+        this.serverUrl = 'http://localhost:3000'; // URL server lokal
         this.init();
     }
 
-    detectBasePath() {
-        // Get current page URL
-        const currentPath = window.location.pathname;
-        
-        // Remove index.html from path
-        const pathParts = currentPath.split('/');
-        pathParts.pop(); // Remove index.html
-        
-        // Reconstruct base path
-        const base = pathParts.join('/') + '/pages/';
-        return base || 'pages/';
-    }
-
     init() {
-        // Handle initial load
+        this.setupRoutes();
+        
+        // Check if server is running
+        this.checkServer();
+        
         window.addEventListener('DOMContentLoaded', () => {
             this.loadPage();
         });
 
-        // Handle hash changes
         window.addEventListener('hashchange', () => {
             this.loadPage();
         });
-
-        // Handle mobile menu toggle
-        const menuToggle = document.getElementById('menuToggle');
-        if (menuToggle) {
-            menuToggle.addEventListener('click', () => {
-                document.querySelector('.nav-menu').classList.toggle('active');
-            });
-        }
-
-        // Close mobile menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.nav-container')) {
-                document.querySelector('.nav-menu').classList.remove('active');
-            }
-        });
-
-        // Setup routes configuration
-        this.setupRoutes();
     }
 
     setupRoutes() {
-        // Define routes with their file paths and titles
+        // Definisikan file HTML untuk setiap route
         this.routes = {
             '/': {
-                title: 'Shoes | CanCode Store',
-                file: 'landing_page/shoes.html',
-                bgcolor: 'FF4725'
+                title: 'Home | CanCode Store',
+                file: 'pages/landing_page/shoes.html',
+                bgcolor: '#FF4725'
             },
             '/t_shirt': {
                 title: 'T-Shirts | CanCode Store',
-                file: 'landing_page/t_shirt.html',
-                bgcolor: '9D32FF'
+                file: 'pages/landing_page/t_shirt.html',
+                bgcolor: '#9D32FF'
             },
             '/hats_headwear': {
                 title: 'Hats & Headwear | CanCode Store',
-                file: 'landing_page/hats_headwear.html',
-                bgcolor: 'BC0018'
+                file: 'pages/landing_page/hats_headwear.html',
+                bgcolor: '#BC0018'
             },
-            // Add more routes as needed
-            '404': {
-                title: 'Page Not Found | CanCode Store',
-                content: `
-                    <div class="not-found">
-                        <div style="font-size: 8rem; margin-bottom: 1rem;">😕</div>
-                        <h2>404 - Page Not Found</h2>
-                        <p>The page you're looking for doesn't exist or has been moved.</p>
-                        <div style="margin-top: 2rem;">
-                            <a href="#/" class="submit-btn" data-link style="text-decoration: none;">Go Back Home</a>
-                        </div>
-                    </div>
-                `
+            '/order': {
+                title: 'Order | CanCode Store',
+                file: 'pages/transaction/order.html',
+                bgcolor: '#8F8F8F'
+            },
+            '/ai_design': {
+                title: 'AI Desaign | CanCode Store',
+                file: 'pages/transaction/ai_design.html',
+                bgcolor: '#8F8F8F'
+            },
+            '/payment': {
+                title: 'Payment | CanCode Store',
+                file: 'pages/transaction/payment.html',
+                bgcolor: '#8F8F8F'
             }
         };
     }
 
-    async loadPage() {
-        // Show loading
-        this.loadingElement.style.display = 'block';
-        this.rootElement.innerHTML = '';
-        
-        // Get current hash (remove #)
-        let hash = window.location.hash.substring(1);
-        
-        // Default to home if no hash
-        if (!hash || hash === '') {
-            hash = '/';
-        }
-        
-        // Update current URL
-        this.currentUrl = hash;
-        
-        // Find the route
-        const route = this.routes[hash];
-        
+    async checkServer() {
         try {
-            if (route) {
-                // Update page title
-                document.title = route.title;
-                
-                // Load content from file if file path exists
-                if (route.file) {
-                    const filePath = this.basePath + route.file;
-                    console.log('Loading file:', filePath);
-                    const content = await this.loadContentFromFile(filePath);
-                    this.rootElement.innerHTML = content;
-                } 
-                // Or use embedded content
-                else if (route.content) {
-                    this.rootElement.innerHTML = route.content;
-                } else {
-                    throw new Error('No content available for this route');
-                }
-
-                this.rootElement.style.backgroundColor = route.bgcolor ? `#${route.bgcolor + "80"}` : 'white';
-                
-                // Update active link
-                this.updateActiveLink();
-                
-                // Initialize interactive elements
-                this.initPageScripts();
-                
-            } else {
-                // Show 404 page
-                this.show404();
-            }
-            
+            const response = await fetch(this.serverUrl, { mode: 'no-cors' });
+            console.log('✅ Server is running');
         } catch (error) {
-            console.error('Error loading page:', error);
-            this.showError();
-            
-        } finally {
-            // Hide loading
-            this.loadingElement.style.display = 'none';
-            
-            // Close mobile menu
-            document.querySelector('.nav-menu')?.classList.remove('active');
-            
-            // Scroll to top
-            window.scrollTo(0, 0);
+            console.warn('⚠️ Server not detected. Please run: node server.js');
+            console.warn('📝 Command: node server.js');
         }
     }
 
-    async loadContentFromFile(filePath) {
-        try {
-            console.log('Attempting to load:', filePath);
-            
-            // Try multiple methods to load the file
-            const html = await this.tryLoadFile(filePath);
-            return html;
-            
-        } catch (error) {
-            console.error('Error loading file:', error);
-            
-            // Try alternative paths
-            const alternativePaths = [
-                `./pages/${this.routes[this.currentUrl]?.file}`,
-                `pages/${this.routes[this.currentUrl]?.file}`,
-                `../pages/${this.routes[this.currentUrl]?.file}`,
-                `${this.routes[this.currentUrl]?.file}`
-            ];
-            
-            for (const altPath of alternativePaths) {
-                try {
-                    console.log('Trying alternative path:', altPath);
-                    const html = await this.tryLoadFile(altPath);
-                    return html;
-                } catch (altError) {
-                    console.log('Failed with path:', altPath);
-                    continue;
-                }
+    async loadPage() {
+        this.showLoading();
+        this.app.innerHTML = '';
+        
+        const hash = window.location.hash.substring(1) || '/';
+        this.currentUrl = hash;
+        
+        const route = this.routes[hash];
+        
+        if (route && route.file) {
+            try {
+                // Load file dari server
+                const content = await this.loadExternalFile(route.file);
+                document.title = route.title;
+                this.app.innerHTML = content;
+                this.initPageScripts();
+            } catch (error) {
+                console.error('❌ Error loading file:', error);
+                this.showServerError();
             }
-            
-            // If all fails, show error content
-            return `
-                <div class="error">
-                    <h2>Error Loading Content</h2>
-                    <p>Could not load: ${this.routes[this.currentUrl]?.file}</p>
-                    <p>Current base path: ${this.basePath}</p>
-                    <p>Please check if the file exists in the pages/landing_page folder.</p>
-                    <p>Full URL: ${window.location.href}</p>
-                    <a href="#/" class="submit-btn" data-link style="text-decoration: none;">Go Back Home</a>
+        } else {
+            this.show404();
+        }
+        // add backgruond color
+        this.app.style.backgroundColor = route && route.bgcolor ? route.bgcolor + "80" : '#ffffff';
+        this.footer[0].style.backgroundColor = route && route.bgcolor ? route.bgcolor : '#000';
+        this.copyright[0].style.backgroundColor = route && route.bgcolor ? route.bgcolor + "80" : '#ffffff';
+        console.log(this.textFooter);
+        
+        this.textFooter.forEach(el => {
+            el.style.color = route && route.bgcolor == "#8F8F8F" ? '#fff' : '#000';
+        });
+
+        
+        this.hideLoading();
+    }
+
+    async loadExternalFile(filePath) {
+        const url = `${this.serverUrl}/${filePath}`;
+        console.log(`📥 Loading: ${url}`);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return await response.text();
+    }
+
+    initPageScripts() {
+        // Handle internal navigation links
+        this.app.querySelectorAll('a[href^="#"]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const hash = link.getAttribute('href').substring(1);
+                window.location.hash = hash || '/';
+            });
+        });
+        
+        // Handle image errors
+        this.app.querySelectorAll('img').forEach(img => {
+            img.onerror = () => {
+                console.warn('🖼️ Image failed:', img.src);
+                this.createImagePlaceholder(img);
+            };
+        });
+    }
+
+    createImagePlaceholder(img) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'image-placeholder';
+        placeholder.innerHTML = `
+            <div style="
+                width: 100%;
+                height: ${img.height || 120}px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: white;
+            ">
+                <span style="font-size: 2rem;">🖼️</span>
+                <small>Image not found</small>
+            </div>
+        `;
+        
+        img.style.display = 'none';
+        img.parentNode.insertBefore(placeholder, img);
+    }
+
+    showLoading() {
+        if (this.loading) {
+            this.loading.style.display = 'block';
+            this.loading.innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <div class="spinner"></div>
+                    <p>Loading from server...</p>
                 </div>
             `;
         }
     }
 
-    async tryLoadFile(filePath) {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            
-            xhr.open('GET', filePath, true);
-            xhr.responseType = 'text';
-            
-            xhr.onload = function() {
-                console.log('XHR status:', xhr.status, 'for:', filePath);
-                if (xhr.status === 0 || xhr.status === 200) {
-                    resolve(xhr.responseText);
-                } else {
-                    reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
-                }
-            };
-            
-            xhr.onerror = function() {
-                console.log('XHR error for:', filePath);
-                reject(new Error('Network error'));
-            };
-            
-            xhr.ontimeout = function() {
-                console.log('XHR timeout for:', filePath);
-                reject(new Error('Request timeout'));
-            };
-            
-            xhr.timeout = 5000; // 5 second timeout
-            xhr.send();
-        });
-    }
-
-    updateActiveLink() {
-        // Remove active class from all links
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-        });
-        
-        // Add active class to current link
-        const currentLink = document.querySelector(`.nav-link[href="#${this.currentUrl}"]`);
-        if (currentLink) {
-            currentLink.classList.add('active');
-        }
-    }
-
-    initPageScripts() {
-        // Re-initialize all data-link elements
-        document.querySelectorAll('[data-link]').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const href = link.getAttribute('href');
-                if (href && href.startsWith('#')) {
-                    window.location.hash = href.substring(1);
-                }
-            });
-        });
-        
-        // Initialize form if exists
-        const contactForm = document.getElementById('contactForm');
-        if (contactForm) {
-            contactForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                alert('Thank you for your message!');
-                contactForm.reset();
-            });
-        }
-        
-        // Initialize add to cart buttons
-        document.querySelectorAll('.add-to-cart').forEach(button => {
-            button.addEventListener('click', () => {
-                alert('Added to cart!');
-            });
-        });
+    hideLoading() {
+        if (this.loading) this.loading.style.display = 'none';
     }
 
     show404() {
-        document.title = this.routes['404'].title;
-        this.rootElement.innerHTML = this.routes['404'].content;
-        this.initPageScripts();
-    }
-
-    showError() {
-        this.rootElement.innerHTML = `
-            <div class="error">
-                <h2>Something went wrong</h2>
-                <p>Please try again or go back to home page.</p>
-                <a href="#/" class="submit-btn" data-link style="text-decoration: none;">Go Back Home</a>
+        this.app.innerHTML = `
+            <div style="text-align: center; padding: 4rem;">
+                <h2>404 - Page Not Found</h2>
+                <a href="#/" style="
+                    display: inline-block;
+                    margin-top: 1rem;
+                    padding: 0.5rem 1.5rem;
+                    background: #667eea;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                ">Go Home</a>
             </div>
         `;
         this.initPageScripts();
     }
 
-    // Method to navigate programmatically
-    navigate(path) {
-        window.location.hash = path;
+    showServerError() {
+        this.app.innerHTML = `
+            <div style="text-align: center; padding: 4rem; max-width: 600px; margin: 0 auto;">
+                <h2>🚨 Server Required</h2>
+                <p>To load external HTML files, you need to run a local server.</p>
+                
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 2rem 0; text-align: left;">
+                    <h3>📋 Steps to fix:</h3>
+                    <ol style="margin: 1rem 0;">
+                        <li>Open terminal/command prompt</li>
+                        <li>Navigate to your project folder</li>
+                        <li>Run: <code style="background: #e9ecef; padding: 0.2rem 0.4rem; border-radius: 3px;">node server.js</code></li>
+                        <li>Refresh this page</li>
+                    </ol>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <a href="#/" style="
+                        display: inline-block;
+                        padding: 0.5rem 1.5rem;
+                        background: #667eea;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                    ">Go Home</a>
+                    
+                    <button onclick="location.reload()" style="
+                        padding: 0.5rem 1.5rem;
+                        background: #6c757d;
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                    ">Retry</button>
+                </div>
+            </div>
+        `;
     }
 }
 
-// Initialize the router when DOM is ready
+// Initialize router
 document.addEventListener('DOMContentLoaded', () => {
-    window.router = new HashRouter();
-    
-    // Debug info
-    console.log('Current URL:', window.location.href);
-    console.log('Pathname:', window.location.pathname);
-    console.log('Hash:', window.location.hash);
+    window.router = new ExternalFileRouter();
 });
